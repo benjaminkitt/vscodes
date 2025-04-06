@@ -1,0 +1,16 @@
+{
+  "github.copilot.chat.codesearch.enabled": true,
+  "github.copilot.chat.agent.runTasks": true,
+  "github.copilot.chat.agent.thinkingTool": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "github.copilot.chat.editor.temporalContext.enabled": true,
+  "github.copilot.chat.edits.suggestRelatedFilesFromGitHistory": true,
+  "github.copilot.chat.edits.suggestRelatedFilesForTests": true,
+  "github.copilot.chat.edits.temporalContext.enabled": true,
+  "github.copilot.chat.generateTests.codeLens": true,
+  "github.copilot.chat.newWorkspaceCreation.enabled": false,
+  "github.copilot.chat.search.semanticTextResults": true,
+  "github.copilot.chat.setupTests.enabled": true,
+  "github.copilot.editor.enableAutoCompletions": true
+}

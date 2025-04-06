@@ -1,0 +1,107 @@
+{
+  "C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "sameLine",
+  "[python]": {
+    "editor.formatOnType": true
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "DotJoshJohnson.xml"
+  },
+  "cmake.showOptionsMovedNotification": false,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "editor.autoClosingBrackets": "never",
+  "editor.autoClosingComments": "never",
+  "editor.autoClosingQuotes": "never",
+  "editor.cursorStyle": "block",
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'JetBrains Mono', 'monospace', monospace",
+  "editor.fontSize": 13,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSaveMode": "modifications",
+  "editor.guides.indentation": false,
+   "editor.inlayHints.enabled": "offUnlessPressed",
+  "editor.inlineSuggest.enabled": true,
+  "editor.insertSpaces": true,
+  "editor.lineNumbers": "relative",
+  "editor.parameterHints.enabled": false,
+  "editor.quickSuggestions": {
+    "comments": "off",
+    "other": "off",
+    "strings": "off"
+  },
+  "editor.renderWhitespace": "trailing",
+  "editor.suggestOnTriggerCharacters": false,
+  "editor.suggestSelection": "first",
+  "editor.tabSize": 2,
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "entity.other.attribute-name.localname.xml",
+        "settings": {
+          "foreground": "#46b47d"
+        }
+      },
+      {
+        "scope": "entity.other.attribute-name.namespace.xml",
+        "settings": {
+          "foreground": "#46b47d"
+        }
+      },
+      {
+        "scope": "punctuation.separator.namespace.xml",
+        "settings": {
+          "foreground": "#46b47d"
+        }
+      }
+    ]
+  },
+  "explorer.fileNesting.enabled": true,
+  "extensions.autoUpdate": false,
+  "files.associations": {
+    "*.sud": "json"
+  },
+  "files.enableTrash": false,
+  "files.exclude": {
+    "**/.classpath": true,
+    "**/.factorypath": true,
+    "**/.project": true,
+    "**/.settings": true
+  },
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "git.autofetch": false,
+  "git.confirmSync": false,
+  "git.enabled": true,
+  "git.openRepositoryInParentFolders": "always",
+  "githd.blameView.enabled": false,
+  "haskell.plugin.eval.config.exception": true,
+  "haskell.plugin.importLens.codeActionsOn": false,
+  "haskell.plugin.importLens.codeLensOn": false,
+  "haskell.plugin.refineImports.codeActionsOn": false,
+  "haskell.plugin.refineImports.codeLensOn": false,
+  "haskell.plugin.rename.config.crossModule": true,
+  "java.autobuild.enabled": false,
+  "java.codeGeneration.hashCodeEquals.useJava7Objects": true,
+  "java.codeGeneration.toString.codeStyle": "STRING_BUILDER",
+  "java.inlayHints.parameterNames.enabled": "none",
+  "maven.executable.preferMavenWrapper": true,
+  "maven.explorer.projectName": "${project.artifactId}",
+  "maven.terminal.useJavaHome": true,
+  "netbeans.java.onSave.organizeImports": false,
+  "netbeans.userdir": "global",
+  "netbeans.verbose": true,
+  "nushellLanguageServer.hints.showInferredTypes": false,
+  "python.jediEnabled": false,
+  "redhat.telemetry.enabled": false,
+  "todo-tree.general.showActivityBarBadge": true,
+  "todo-tree.regex.regex": "(//|--|#|<!--|\\(:|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+  "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+  "window.autoDetectColorScheme": true,
+  "window.restoreWindows": "none",
+  "workbench.editor.enablePreview": false,
+  "workbench.preferredDarkColorTheme": "Dark Modern",
+  "workbench.preferredLightColorTheme": "Solarized Light",
+  "xml.format.closingBracketNewLine": true,
+  "xml.format.enabled": false,
+  "xml.format.preserveAttributeLineBreaks": true,
+  "xml.format.splitAttributesIndentSize": 4,
+  "xmlTools.splitAttributesOnFormat": true
+}
