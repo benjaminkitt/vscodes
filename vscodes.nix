@@ -318,8 +318,7 @@ let
       inherit (profileInfos cfg) defaultProfile allProfilesExceptDefault;
       vscodeVersion = cfg.package.version;
       vscodePname = cfg.package.pname;
-    in
-    (flatten [
+    in lib.mkMerge (flatten [
       (mapAttrsToList (n: v: [
         (mkIf ((mergedUserSettings v.userSettings v.enableUpdateCheck
           v.enableExtensionUpdateCheck) != { }) {
@@ -351,7 +350,9 @@ let
             jsonFormat.generate "user-snippet-global.code-snippets"
             v.globalSnippets;
         })
-      ]) cfg.profiles)
+      ]) (allProfilesExceptDefault // {
+        default = defaultProfile;
+      }))
 
       # We write extensions.json for all profiles, except the default profile,
       # since that is handled by code below.
@@ -444,7 +445,7 @@ in {
 
     home.packages = lib.concatMap mkPackages (lib.attrValues conf);
     home.activation = lib.concatMapAttrs (_: cfg: mkActivation cfg) conf;
-    home.file = lib.mkMerge (lib.traceValSeq (flatten (lib.map mkFiles (lib.attrValues conf))));
+    home.file = lib.mkMerge (flatten (lib.map mkFiles (lib.attrValues conf)));
   };
   /*
   mkConfig = cfg: mkIf cfg.enable {
