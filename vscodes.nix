@@ -228,7 +228,7 @@ let
         '';
       };
 
-      package = lib.mkPackageOption pkgs "vscode" {
+      package = lib.mkPackageOption pkgs name {
         example = "pkgs.vscodium";
         extraDescription = "Version of Visual Studio Code to install.";
       };
