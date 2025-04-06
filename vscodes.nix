@@ -10,14 +10,16 @@ let
 
   jsonFormat = pkgs.formats.json { };
 
-  userDir = cfg:
+  dataDir = cfg:
     let
       configDir = cfg.name;
     in
     if pkgs.stdenv.hostPlatform.isDarwin then
-      "${config.home.homeDirectory}/Library/Application Support/${configDir}/User"
+      "${config.home.homeDirectory}/Library/Application Support/${configDir}"
     else
-      "${config.xdg.configHome}/${configDir}/User";
+      "${config.xdg.configHome}/${configDir}";
+
+  userDir = cfg: "${dataDir cfg}/User";
 
   configFilePath = cfg: name:
     "${userDir cfg}/${
@@ -289,7 +291,7 @@ let
           ${cfg.package}/bin/${cfg.package.executableName} \
           $out/bin/${cfg.name} \
           --inherit-argv0 \
-          --add-flags '--user-data-dir="${userDir cfg}"' \
+          --add-flags '--user-data-dir="${dataDir cfg}"' \
           --add-flags '--extensions-dir="${extensionPath cfg}"'
         chmod +x $out/bin/${cfg.name}
         mkdir -p $out/share/applications
