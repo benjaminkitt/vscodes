@@ -36,7 +36,6 @@ let
       optionalString (name != "default") "profiles/${name}/"
     }snippets";
 
-  # TODO: On Darwin where are the extensions?
   extensionPath = cfg: "${config.home.homeDirectory}/.local/share/vscodes/${cfg.name}/extensions";
 
   extensionJson = ext: pkgs.vscode-utils.toExtensionJson ext;
@@ -491,16 +490,5 @@ in {
     home.activation = lib.concatMapAttrs (_: cfg: mkActivation cfg) conf;
     home.file = lib.mkMerge (flatten (lib.map mkFiles (lib.attrValues conf)));
   };
-  /*
-  mkConfig = cfg: mkIf cfg.enable {
-    warnings = mkWarnings cfg;
-
-    home.packages = mkPackages cfg;
-
-    home.activation = mkActivation cfg;
-
-    home.file = mkFiles cfg;
-  };
-  */
 
 }
