@@ -373,7 +373,7 @@ let
                     file_write="$file_write$([ "$file_write" != "" ] && echo "...")$profile"
                   done
 
-                  mkdir -p $(dirname "$file")
+                  mkdir -p "$(dirname "$file")"
                   echo "{}" > "$file"
                 fi
 
