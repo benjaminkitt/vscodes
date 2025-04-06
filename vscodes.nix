@@ -5,54 +5,36 @@ let
 
   cfg = config.programs.vscode;
 
-  vscodePname = cfg.package.pname;
-  vscodeVersion = cfg.package.version;
-
   jsonFormat = pkgs.formats.json { };
 
-  configDir = {
-    "vscode" = "Code";
-    "vscode-insiders" = "Code - Insiders";
-    "vscodium" = "VSCodium";
-    "openvscode-server" = "OpenVSCode Server";
-    "windsurf" = "Windsurf";
-    "cursor" = "Cursor";
-  }.${vscodePname};
-
-  extensionDir = {
-    "vscode" = "vscode";
-    "vscode-insiders" = "vscode-insiders";
-    "vscodium" = "vscode-oss";
-    "openvscode-server" = "openvscode-server";
-    "windsurf" = "windsurf";
-    "cursor" = "cursor";
-  }.${vscodePname};
-
-  userDir = if pkgs.stdenv.hostPlatform.isDarwin then
+  userDir = cfg: let
+    configDir = cfg.name;
+  in
+  if pkgs.stdenv.hostPlatform.isDarwin then
     "Library/Application Support/${configDir}/User"
   else
     "${config.xdg.configHome}/${configDir}/User";
 
-  configFilePath = name:
-    "${userDir}/${
+  configFilePath = cfg: name:
+    "${userDir cfg}/${
       optionalString (name != "default") "profiles/${name}/"
     }settings.json";
-  tasksFilePath = name:
-    "${userDir}/${
+  tasksFilePath = cfg: name:
+    "${userDir cfg}/${
       optionalString (name != "default") "profiles/${name}/"
     }tasks.json";
-  keybindingsFilePath = name:
-    "${userDir}/${
+  keybindingsFilePath = cfg: name:
+    "${userDir cfg}/${
       optionalString (name != "default") "profiles/${name}/"
     }keybindings.json";
 
-  snippetDir = name:
-    "${userDir}/${
+  snippetDir = cfg: name:
+    "${userDir cfg}/${
       optionalString (name != "default") "profiles/${name}/"
     }snippets";
 
   # TODO: On Darwin where are the extensions?
-  extensionPath = ".${extensionDir}/extensions";
+  extensionPath = cfg: ".local/share/vscodes/${cfg.name}/extensions";
 
   extensionJson = ext: pkgs.vscode-utils.toExtensionJson ext;
   extensionJsonFile = name: text:
@@ -214,9 +196,30 @@ let
     };
   };
 
-  instanceType = types.submodule {
+  instanceType = types.submodule ({ name, ... }: {
     options = {
-      enable = lib.mkEnableOption "Visual Studio Code";
+      enable = lib.mkOption {
+        type = types.bool;
+        default = true;
+        example = false;
+        description = ''
+          Whether to enable this instance of Visual Studio Code.
+
+          All defined instances are enabled by default.
+        '';
+      };
+
+      name = mkOption {
+        type = types.str;
+        default = name;
+        example = "vscode";
+        description = ''
+          The name of the instance. This is used to create
+          the directory where the extensions are installed.
+
+          Defaults to the name of the attribute set.
+        '';
+      };
 
       package = lib.mkPackageOption pkgs "vscode" {
         example = "pkgs.vscodium";
@@ -243,63 +246,41 @@ let
         '';
       };
     };
-  };
+  });
 
-  defaultProfile = if cfg.profiles ? default then cfg.profiles.default else { };
-  allProfilesExceptDefault = removeAttrs cfg.profiles [ "default" ];
-in {
-  imports = [
-    (lib.mkChangedOptionModule [
-      "programs"
-      "vscode"
-      "immutableExtensionsDir"
-    ] [ "programs" "vscode" "mutableExtensionsDir" ]
-      (config: !config.programs.vscode.immutableExtensionsDir))
-  ] ++ map (v:
-    lib.mkRenamedOptionModule [ "programs" "vscode" v ] [
-      "programs"
-      "vscode"
-      "profiles"
-      "default"
-      v
-    ]) [
-      "enableUpdateCheck"
-      "enableExtensionUpdateCheck"
-      "userSettings"
-      "userTasks"
-      "keybindings"
-      "extensions"
-      "languageSnippets"
-      "globalSnippets"
-    ];
+  mkWarnings = cfg: let
+    inherit (profileInfos cfg) defaultProfile allProfilesExceptDefault;
+  in
+  [
+    (mkIf (allProfilesExceptDefault != { } && cfg.mutableExtensionsDir)
+      "programs.vscode.mutableExtensionsDir can be used only if no profiles apart from default are set.")
+    (mkIf ((lib.filterAttrs (n: v:
+          (v ? enableExtensionUpdateCheck || v ? enableUpdateCheck)
+          && (v.enableExtensionUpdateCheck != null || v.enableUpdateCheck != null))
+      allProfilesExceptDefault) != { })
+      "The option programs.vscode.profiles.*.enableExtensionUpdateCheck and option programs.vscode.profiles.*.enableUpdateCheck is invalid for all profiles except default.")
+  ];
 
-  options.programs.vscodes = types.attrsOf instanceType;
+  # TODO derivation to expose
+  mkPackages = cfg: [];
 
-  config = mkIf cfg.enable {
-    warnings = [
-      (mkIf (allProfilesExceptDefault != { } && cfg.mutableExtensionsDir)
-        "programs.vscode.mutableExtensionsDir can be used only if no profiles apart from default are set.")
-      (mkIf ((lib.filterAttrs (n: v:
-        (v ? enableExtensionUpdateCheck || v ? enableUpdateCheck)
-        && (v.enableExtensionUpdateCheck != null || v.enableUpdateCheck
-          != null)) allProfilesExceptDefault) != { })
-        "The option programs.vscode.profiles.*.enableExtensionUpdateCheck and option programs.vscode.profiles.*.enableUpdateCheck is invalid for all profiles except default.")
-    ];
+  # The file `${userDir}/globalStorage/storage.json` needs to be writable by VSCode,
+  # since it contains other data, such as theme backgrounds, recently opened folders, etc.
 
-    home.packages = [ cfg.package ];
-
-    # The file `${userDir}/globalStorage/storage.json` needs to be writable by VSCode,
-    # since it contains other data, such as theme backgrounds, recently opened folders, etc.
-
-    # A caveat of adding profiles this way is, VSCode has to be closed
-    # when this file is being written, since the file is loaded into RAM
-    # and overwritten on closing VSCode.
-    home.activation.vscodeProfiles = lib.hm.dag.entryAfter [ "writeBoundary" ]
+  # A caveat of adding profiles this way is, VSCode has to be closed
+  # when this file is being written, since the file is loaded into RAM
+  # and overwritten on closing VSCode.
+  mkActivation = cfg:
+  let
+    inherit (profileInfos cfg) defaultProfile allProfilesExceptDefault;
+  in
+  {
+    "${cfg.name}VscodeProfiles" = lib.hm.dag.entryAfter [ "writeBoundary" ]
       (let
         modifyGlobalStorage =
           pkgs.writeShellScript "vscode-global-storage-modify" ''
             PATH=${lib.makeBinPath [ pkgs.jq ]}''${PATH:+:}$PATH
-            file="${userDir}/globalStorage/storage.json"
+            file="${userDir cfg}/globalStorage/storage.json"
             file_write=""
             profiles=(${
               lib.escapeShellArgs
@@ -329,30 +310,34 @@ in {
             fi
           '';
       in modifyGlobalStorage.outPath);
+  };
 
-    home.file = lib.mkMerge (flatten [
+  mkFiles = cfg: let
+      inherit (profileInfos cfg) defaultProfile allProfilesExceptDefault;
+    in
+    lib.mkMerge (flatten [
       (mapAttrsToList (n: v: [
         (mkIf ((mergedUserSettings v.userSettings v.enableUpdateCheck
           v.enableExtensionUpdateCheck) != { }) {
-            "${configFilePath n}".source =
+            "${configFilePath cfg n}".source =
               jsonFormat.generate "vscode-user-settings"
               (mergedUserSettings v.userSettings v.enableUpdateCheck
                 v.enableExtensionUpdateCheck);
           })
 
         (mkIf (v.userTasks != { }) {
-          "${tasksFilePath n}".source =
+          "${tasksFilePath cfg n}".source =
             jsonFormat.generate "vscode-user-tasks" v.userTasks;
         })
 
         (mkIf (v.keybindings != [ ]) {
-          "${keybindingsFilePath n}".source =
+          "${keybindingsFilePath cfg n}".source =
             jsonFormat.generate "vscode-keybindings"
             (map (lib.filterAttrs (_: v: v != null)) v.keybindings);
         })
 
         (mkIf (v.languageSnippets != { }) (lib.mapAttrs' (language: snippet:
-          lib.nameValuePair "${snippetDir n}/${language}.json" {
+          lib.nameValuePair "${snippetDir cfg n}/${language}.json" {
             source =
               jsonFormat.generate "user-snippet-${language}.json" snippet;
           }) v.languageSnippets))
@@ -367,7 +352,7 @@ in {
       # We write extensions.json for all profiles, except the default profile,
       # since that is handled by code below.
       (mkIf (allProfilesExceptDefault != { }) (lib.mapAttrs' (n: v:
-        lib.nameValuePair "${userDir}/profiles/${n}/extensions.json" {
+        lib.nameValuePair "${userDir cfg}/profiles/${n}/extensions.json" {
           source = "${
               extensionJsonFile n (extensionJson v.extensions)
             }/share/vscode/extensions/extensions.json";
@@ -377,7 +362,7 @@ in {
         # Adapted from https://discourse.nixos.org/t/vscode-extensions-setup/1801/2
         subDir = "share/vscode/extensions";
         toPaths = ext:
-          map (k: { "${extensionPath}/${k}".source = "${ext}/${subDir}/${k}"; })
+          map (k: { "${extensionPath cfg}/${k}".source = "${ext}/${subDir}/${k}"; })
           (if ext ? vscodeExtUniqueId then
             [ ext.vscodeExtUniqueId ]
           else
@@ -393,7 +378,7 @@ in {
             || vscodePname == "cursor") && defaultProfile != { }) {
               # Whenever our immutable extensions.json changes, force VSCode to regenerate
               # extensions.json with both mutable and immutable extensions.
-              "${extensionPath}/.extensions-immutable.json" = {
+              "${extensionPath cfg}/.extensions-immutable.json" = {
                 text = extensionJson defaultProfile.extensions;
                 onChange = ''
                   run rm $VERBOSE_ARG -f ${extensionPath}/{extensions.json,.init-default-profile-extensions}
@@ -403,7 +388,7 @@ in {
               };
             })
       else {
-        "${extensionPath}".source = let
+        "${extensionPath cfg}".source = let
           combinedExtensionsDrv = pkgs.buildEnv {
             name = "vscode-extensions";
             paths = (flatten (mapAttrsToList (n: v: v.extensions) cfg.profiles))
@@ -415,5 +400,53 @@ in {
         in "${combinedExtensionsDrv}/${subDir}";
       }))
     ]);
+
+  mkConfig = cfg: mkIf cfg.enable {
+    warnings = mkWarnings cfg;
+
+    home.packages = mkPackages cfg;
+
+    home.activation = mkActivation cfg;
+
+    home.file = mkFiles cfg;
   };
+
+  mkImports = cfg: let name = cfg.name; in [
+    (lib.mkChangedOptionModule [
+      "programs"
+      "vscodes"
+      name
+      "immutableExtensionsDir"
+    ] [ "programs" "vscodes" name "mutableExtensionsDir" ]
+      (config: !config.programs.vscode.immutableExtensionsDir))
+  ] ++ map (v:
+    lib.mkRenamedOptionModule [ "programs" "vscodes" name v ] [
+      "programs"
+      "vscodes"
+      name
+      "profiles"
+      "default"
+      v
+    ]) [
+      "enableUpdateCheck"
+      "enableExtensionUpdateCheck"
+      "userSettings"
+      "userTasks"
+      "keybindings"
+      "extensions"
+      "languageSnippets"
+      "globalSnippets"
+    ];
+
+  profileInfos = cfg: {
+    defaultProfile = if cfg.profiles ? default then cfg.profiles.default else { };
+    allProfilesExceptDefault = removeAttrs cfg.profiles [ "default" ];
+  };
+
+in {
+  imports = flatten (map mkImports (lib.attrValues config.programs.vscodes));
+
+  options.programs.vscodes = types.attrsOf instanceType;
+
+  config = lib.mkMerge mkConfig (lib.attrValues config.programs.vscodes);
 }
