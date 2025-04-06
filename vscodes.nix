@@ -3,7 +3,7 @@ let
   inherit (lib)
     flatten literalExpression mapAttrsToList mkOption mkIf optionalString types;
 
-  cfg = config.programs.vscode;
+  conf = config.programs.vscodes;
 
   jsonFormat = pkgs.formats.json { };
 
@@ -52,8 +52,7 @@ let
       "extensions.autoCheckUpdates" = false;
     };
 
-  profileType = types.submodule {
-    options = {
+  profileOptions = {
       userSettings = mkOption {
         type = jsonFormat.type;
         default = { };
@@ -194,10 +193,13 @@ let
         '';
       };
     };
+
+  profileType = types.submodule {
+    options = profileOptions;
   };
 
-  instanceType = types.submodule ({ name, ... }: {
-    options = {
+  instanceType = types.submodule ({ name, config, ... }: {
+    options = profileOptions // {
       enable = lib.mkOption {
         type = types.bool;
         default = true;
@@ -228,8 +230,8 @@ let
 
       mutableExtensionsDir = mkOption {
         type = types.bool;
-        default = allProfilesExceptDefault == { };
-        example = false;
+        default = false;
+        example = true;
         description = ''
           Whether extensions can be installed or updated manually
           or by Visual Studio Code. Mutually exclusive to
@@ -314,8 +316,10 @@ let
 
   mkFiles = cfg: let
       inherit (profileInfos cfg) defaultProfile allProfilesExceptDefault;
+      vscodeVersion = cfg.package.version;
+      vscodePname = cfg.package.pname;
     in
-    lib.mkMerge (flatten [
+    (flatten [
       (mapAttrsToList (n: v: [
         (mkIf ((mergedUserSettings v.userSettings v.enableUpdateCheck
           v.enableExtensionUpdateCheck) != { }) {
@@ -358,7 +362,7 @@ let
             }/share/vscode/extensions/extensions.json";
         }) allProfilesExceptDefault))
 
-      (mkIf (cfg.profiles != { }) (let
+      (mkIf (cfg.profiles != { } || defaultProfile != { }) (let
         # Adapted from https://discourse.nixos.org/t/vscode-extensions-setup/1801/2
         subDir = "share/vscode/extensions";
         toPaths = ext:
@@ -373,7 +377,8 @@ let
       # causes VSCode to create the extensions.json with all the extensions
       # in the extension directory, which includes extensions from other profiles.
         lib.mkMerge (lib.concatMap toPaths
-          (flatten (mapAttrsToList (n: v: v.extensions) cfg.profiles))
+          # only the default profile exists here
+          (if (defaultProfile ? extensions) then defaultProfile.extensions else [])
           ++ lib.optional ((lib.versionAtLeast vscodeVersion "1.74.0"
             || vscodePname == "cursor") && defaultProfile != { }) {
               # Whenever our immutable extensions.json changes, force VSCode to regenerate
@@ -392,6 +397,7 @@ let
           combinedExtensionsDrv = pkgs.buildEnv {
             name = "vscode-extensions";
             paths = (flatten (mapAttrsToList (n: v: v.extensions) cfg.profiles))
+              ++ defaultProfile.extensions
               ++ lib.optional ((lib.versionAtLeast vscodeVersion "1.74.0"
                 || vscodePname == "cursor") && defaultProfile != { })
               (extensionJsonFile "default"
@@ -401,6 +407,46 @@ let
       }))
     ]);
 
+  # TODO sanity check default profile vs immediate options
+  profileInfos = cfg: {
+    defaultProfile = if cfg.profiles ? default then cfg.profiles.default else {
+      inherit (cfg) userSettings userTasks keybindings extensions
+        languageSnippets globalSnippets enableUpdateCheck enableExtensionUpdateCheck;
+     };
+    allProfilesExceptDefault = removeAttrs cfg.profiles [ "default" ];
+  };
+
+in {
+
+  options.programs.vscodes = mkOption {
+    type = types.attrsOf instanceType;
+    default = { };
+    example = ''
+      {
+        vscode = {
+          enable = true;
+          package = pkgs.vscodium;
+          mutableExtensionsDir = false;
+          profiles.default.userSettings."files.autoSave" = "off";
+        };
+      }
+    '';
+    description = ''
+      Configuration for Visual Studio Code.
+
+      Each instance of Visual Studio Code is configured
+      using the attribute set name.
+    '';
+  };
+
+  config = {
+    warnings = lib.concatMap mkWarnings (lib.attrValues conf);
+
+    home.packages = lib.concatMap mkPackages (lib.attrValues conf);
+    home.activation = lib.concatMapAttrs (_: cfg: mkActivation cfg) conf;
+    home.file = lib.mkMerge (lib.traceValSeq (flatten (lib.map mkFiles (lib.attrValues conf))));
+  };
+  /*
   mkConfig = cfg: mkIf cfg.enable {
     warnings = mkWarnings cfg;
 
@@ -410,43 +456,6 @@ let
 
     home.file = mkFiles cfg;
   };
+  */
 
-  mkImports = cfg: let name = cfg.name; in [
-    (lib.mkChangedOptionModule [
-      "programs"
-      "vscodes"
-      name
-      "immutableExtensionsDir"
-    ] [ "programs" "vscodes" name "mutableExtensionsDir" ]
-      (config: !config.programs.vscode.immutableExtensionsDir))
-  ] ++ map (v:
-    lib.mkRenamedOptionModule [ "programs" "vscodes" name v ] [
-      "programs"
-      "vscodes"
-      name
-      "profiles"
-      "default"
-      v
-    ]) [
-      "enableUpdateCheck"
-      "enableExtensionUpdateCheck"
-      "userSettings"
-      "userTasks"
-      "keybindings"
-      "extensions"
-      "languageSnippets"
-      "globalSnippets"
-    ];
-
-  profileInfos = cfg: {
-    defaultProfile = if cfg.profiles ? default then cfg.profiles.default else { };
-    allProfilesExceptDefault = removeAttrs cfg.profiles [ "default" ];
-  };
-
-in {
-  imports = flatten (map mkImports (lib.attrValues config.programs.vscodes));
-
-  options.programs.vscodes = types.attrsOf instanceType;
-
-  config = lib.mkMerge mkConfig (lib.attrValues config.programs.vscodes);
 }
