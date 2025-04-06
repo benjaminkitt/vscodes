@@ -3,6 +3,9 @@ let
   inherit (lib)
     flatten literalExpression mapAttrsToList mkOption mkIf optionalString types;
 
+  inherit (pkgs.stdenv) mkDerivation;
+  inherit (pkgs) makeDesktopItem;
+
   conf = config.programs.vscodes;
 
   jsonFormat = pkgs.formats.json { };
@@ -11,7 +14,7 @@ let
     configDir = cfg.name;
   in
   if pkgs.stdenv.hostPlatform.isDarwin then
-    "Library/Application Support/${configDir}/User"
+    "${config.home.homeDirectory}/Library/Application Support/${configDir}/User"
   else
     "${config.xdg.configHome}/${configDir}/User";
 
@@ -34,7 +37,7 @@ let
     }snippets";
 
   # TODO: On Darwin where are the extensions?
-  extensionPath = cfg: ".local/share/vscodes/${cfg.name}/extensions";
+  extensionPath = cfg: "${config.home.homeDirectory}/.local/share/vscodes/${cfg.name}/extensions";
 
   extensionJson = ext: pkgs.vscode-utils.toExtensionJson ext;
   extensionJsonFile = name: text:
@@ -263,8 +266,49 @@ let
       "The option programs.vscode.profiles.*.enableExtensionUpdateCheck and option programs.vscode.profiles.*.enableUpdateCheck is invalid for all profiles except default.")
   ];
 
-  # TODO derivation to expose
-  mkPackages = cfg: [];
+  mkPackages = cfg: [
+    (mkDerivation rec {
+      pname = "${cfg.package.pname}-${cfg.name}";
+      inherit (cfg.package) version;
+
+      dontFetch = true;
+      dontUnpack = true;
+      dontPatch = true;
+      dontConfigure = true;
+      dontBuild = true;
+      dontFixup = true;
+
+      nativeBuildInputs = [ pkgs.makeWrapper ];
+
+      installPhase = ''
+        mkdir -p $out/bin
+        makeWrapper \
+          ${cfg.package}/bin/${cfg.package.executableName} \
+          $out/bin/${cfg.name} \
+          --inherit-argv0 \
+          --add-flags '--user-data-dir="${userDir cfg}"' \
+          --add-flags '--extensions-dir="${extensionPath cfg}"'
+        chmod +x $out/bin/${cfg.name}
+        mkdir -p $out/share/applications
+        cp -r ${desktopItem}/share/applications/* $out/share/applications/
+      '';
+
+      desktopItem = makeDesktopItem {
+          name = cfg.name;
+          desktopName = "${cfg.package.longName or cfg.package.pname} (${cfg.name})";
+          genericName = "Text Editor";
+          icon = "vs${cfg.package.executableName}";
+          exec = "${cfg.name} %F";
+          categories = [ "Development" "Utility" "IDE" "TextEditor" ];
+          keywords = [ "vscode" cfg.package.pname ];
+          actions.new-empty-window = {
+            name = "New Empty Window";
+            exec = "${cfg.name} --new-window %F";
+            icon = "vs${cfg.package.executableName}";
+          };
+        };
+    })
+  ];
 
   # The file `${userDir}/globalStorage/storage.json` needs to be writable by VSCode,
   # since it contains other data, such as theme backgrounds, recently opened folders, etc.
