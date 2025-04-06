@@ -213,6 +213,38 @@ let
       };
     };
   };
+
+  instanceType = types.submodule {
+    options = {
+      enable = lib.mkEnableOption "Visual Studio Code";
+
+      package = lib.mkPackageOption pkgs "vscode" {
+        example = "pkgs.vscodium";
+        extraDescription = "Version of Visual Studio Code to install.";
+      };
+
+      mutableExtensionsDir = mkOption {
+        type = types.bool;
+        default = allProfilesExceptDefault == { };
+        example = false;
+        description = ''
+          Whether extensions can be installed or updated manually
+          or by Visual Studio Code. Mutually exclusive to
+          programs.vscode.profiles.
+        '';
+      };
+
+      profiles = mkOption {
+        type = types.attrsOf profileType;
+        default = { };
+        description = ''
+          A list of all VSCode profiles. Mutually exclusive
+          to programs.vscode.mutableExtensionsDir
+        '';
+      };
+    };
+  };
+
   defaultProfile = if cfg.profiles ? default then cfg.profiles.default else { };
   allProfilesExceptDefault = removeAttrs cfg.profiles [ "default" ];
 in {
@@ -241,34 +273,7 @@ in {
       "globalSnippets"
     ];
 
-  options.programs.vscode = {
-    enable = lib.mkEnableOption "Visual Studio Code";
-
-    package = lib.mkPackageOption pkgs "vscode" {
-      example = "pkgs.vscodium";
-      extraDescription = "Version of Visual Studio Code to install.";
-    };
-
-    mutableExtensionsDir = mkOption {
-      type = types.bool;
-      default = allProfilesExceptDefault == { };
-      example = false;
-      description = ''
-        Whether extensions can be installed or updated manually
-        or by Visual Studio Code. Mutually exclusive to
-        programs.vscode.profiles.
-      '';
-    };
-
-    profiles = mkOption {
-      type = types.attrsOf profileType;
-      default = { };
-      description = ''
-        A list of all VSCode profiles. Mutually exclusive
-        to programs.vscode.mutableExtensionsDir
-      '';
-    };
-  };
+  options.programs.vscodes = types.attrsOf instanceType;
 
   config = mkIf cfg.enable {
     warnings = [
