@@ -296,20 +296,24 @@ let
         chmod +x $out/bin/${cfg.name}
         mkdir -p $out/share/applications
         cp -r ${desktopItem}/share/applications/* $out/share/applications/
+        mkdir -p $out/share/pixmaps
+        for pic in ${cfg.package}/share/pixmaps/*; do
+          cp $pic $out/share/pixmaps/${cfg.name}.''${pic##*.}
+        done
       '';
 
       desktopItem = makeDesktopItem {
         name = cfg.name;
         desktopName = "${cfg.package.longName or cfg.package.pname} (${cfg.name})";
         genericName = "Text Editor";
-        icon = "vs${cfg.package.executableName}";
+        icon = "${cfg.name}";
         exec = "${cfg.name} %F";
         categories = [ "Development" "Utility" "IDE" "TextEditor" ];
         keywords = [ "vscode" cfg.package.pname ];
         actions.new-empty-window = {
           name = "New Empty Window";
           exec = "${cfg.name} --new-window %F";
-          icon = "vs${cfg.package.executableName}";
+          icon = "${cfg.name}";
         };
       };
     })
