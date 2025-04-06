@@ -233,6 +233,17 @@ let
         extraDescription = "Version of Visual Studio Code to install.";
       };
 
+      guiApplication = mkOption {
+        type = types.bool;
+        default = true;
+        example = false;
+        description = ''
+          Whether to make desktop item for this instance.
+
+          Instances for vscode-server and similar probably do not want this.
+        '';
+      };
+
       mutableExtensionsDir = mkOption {
         type = types.bool;
         default = false;
@@ -299,7 +310,7 @@ let
         chmod +x $out/bin/${cfg.name}
       ''
       # TODO figure out how to make app bundle on macOS
-       + lib.optionalString isLinux ''
+       + lib.optionalString (isLinux && cfg.guiApplication) ''
         mkdir -p $out/share/applications
         cp -r ${desktopItem}/share/applications/* $out/share/applications/
         mkdir -p $out/share/pixmaps
@@ -308,7 +319,7 @@ let
         done
       '';
 
-      desktopItem = if isLinux then (makeDesktopItem {
+      desktopItem = if (isLinux && cfg.guiApplication) then (makeDesktopItem {
         name = cfg.name;
         desktopName = "${cfg.package.longName or cfg.package.pname} (${cfg.name})";
         genericName = "Text Editor";
