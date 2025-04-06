@@ -271,6 +271,9 @@ let
         "The option programs.vscode.profiles.*.enableExtensionUpdateCheck and option programs.vscode.profiles.*.enableUpdateCheck is invalid for all profiles except default.")
     ];
 
+  exe = cfg: let pkg = cfg.package; in
+    if pkg ? executableName then pkg.executableName else with lib; pipe pkg [ getExe (splitString "/") last ];
+
   mkPackages = cfg: [
     (mkDerivation rec {
       pname = "${cfg.package.pname}-${cfg.name}";
@@ -288,7 +291,7 @@ let
       installPhase = ''
         mkdir -p $out/bin
         makeWrapper \
-          ${cfg.package}/bin/${cfg.package.executableName} \
+          ${cfg.package}/bin/${exe cfg} \
           $out/bin/${cfg.name} \
           --inherit-argv0 \
           --add-flags '--user-data-dir="${dataDir cfg}"' \
