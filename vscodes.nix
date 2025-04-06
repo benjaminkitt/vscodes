@@ -475,9 +475,12 @@ let
                 "${extensionPath cfg}/.extensions-immutable.json" = {
                   text = extensionJson defaultProfile.extensions;
                   onChange = ''
-                    run rm $VERBOSE_ARG -f ${extensionPath}/{extensions.json,.init-default-profile-extensions}
+                    run rm $VERBOSE_ARG -f ${extensionPath cfg}/{extensions.json,.init-default-profile-extensions}
                     verboseEcho "Regenerating VSCode extensions.json"
-                    run ${lib.getExe cfg.package} --list-extensions > /dev/null
+                    run ${cfg.package}/bin/${exe cfg} \
+                     --user-data-dir="${dataDir cfg}" \
+                     --extensions-dir="${extensionPath cfg}" \
+                     --list-extensions > /dev/null
                   '';
                 };
               })
