@@ -3,7 +3,7 @@ let
   inherit (lib)
     flatten literalExpression mapAttrsToList mkOption mkIf optionalString types;
 
-  inherit (pkgs.stdenv) mkDerivation;
+  inherit (pkgs.stdenv) mkDerivation isLinux;
   inherit (pkgs) makeDesktopItem;
 
   conf = config.programs.vscodes;
@@ -294,6 +294,9 @@ let
           --add-flags '--user-data-dir="${dataDir cfg}"' \
           --add-flags '--extensions-dir="${extensionPath cfg}"'
         chmod +x $out/bin/${cfg.name}
+      ''
+      # TODO figure out how to make app bundle on macOS
+       + lib.optionalString isLinux ''
         mkdir -p $out/share/applications
         cp -r ${desktopItem}/share/applications/* $out/share/applications/
         mkdir -p $out/share/pixmaps
@@ -302,7 +305,7 @@ let
         done
       '';
 
-      desktopItem = makeDesktopItem {
+      desktopItem = if isLinux then (makeDesktopItem {
         name = cfg.name;
         desktopName = "${cfg.package.longName or cfg.package.pname} (${cfg.name})";
         genericName = "Text Editor";
@@ -315,7 +318,7 @@ let
           exec = "${cfg.name} --new-window %F";
           icon = "${cfg.name}";
         };
-      };
+      }) else null;
     })
   ];
 
