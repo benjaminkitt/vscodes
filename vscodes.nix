@@ -468,7 +468,8 @@ let
               (if (defaultProfile ? extensions) then defaultProfile.extensions else [ ])
             ++ lib.optional
               ((lib.versionAtLeast vscodeVersion "1.74.0"
-                || vscodePname == "cursor") && defaultProfile != { })
+                || vscodePname == "cursor"
+                || vscodePname == "windsurf") && defaultProfile != { })
               {
                 # Whenever our immutable extensions.json changes, force VSCode to regenerate
                 # extensions.json with both mutable and immutable extensions.
@@ -493,7 +494,8 @@ let
                   ++ defaultProfile.extensions
                   ++ lib.optional
                   ((lib.versionAtLeast vscodeVersion "1.74.0"
-                    || vscodePname == "cursor") && defaultProfile != { })
+                    || vscodePname == "cursor"
+                    || vscodePname == "windsurf") && defaultProfile != { })
                   (extensionJsonFile "default"
                     (extensionJson defaultProfile.extensions));
               };
